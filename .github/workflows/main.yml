@@ -2,56 +2,82 @@ name: Deploy to Multiple EC2 Hosts
 
 on:
   push:
-    branches: [test]
+    branches: [ test ]
 
 jobs:
   deploy-all:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) Checkout to grab docker-compose.yml
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2) Start ssh-agent with your PEM
       - name: Start ssh-agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
+      # -------- ALERT GENERATOR --------
       - name: Deploy alert-generator
         run: |
+          # Copy only the compose file
+          scp -o StrictHostKeyChecking=no docker-compose.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_GENERATOR }}:~/docker-compose.yml
+
+          # SSH & run just the generator container
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_GENERATOR }} << 'EOF'
-            cd ~/DEAS-LA
-            git fetch && git reset --hard origin/main
-            docker compose up -d --build alert-generator
+            set -e
+            # Pull the latest image and (re)create only this service
+            docker compose -f ~/docker-compose.yml pull alert-generator
+            docker compose -f ~/docker-compose.yml up -d alert-generator
           EOF
 
+      # -------- ALERT ROUTER --------
       - name: Deploy alert-router
         run: |
+          scp -o StrictHostKeyChecking=no docker-compose.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_ROUTER }}:~/docker-compose.yml
+
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_ROUTER }} << 'EOF'
-            cd ~/DEAS-LA
-            git fetch && git reset --hard origin/main
-            docker compose up -d --build alert-router
+            set -e
+            docker compose -f ~/docker-compose.yml pull alert-router
+            docker compose -f ~/docker-compose.yml up -d alert-router
           EOF
 
+      # -------- DELIVERY --------
       - name: Deploy delivery
         run: |
+          scp -o StrictHostKeyChecking=no docker-compose.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DELIVERY }}:~/docker-compose.yml
+
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DELIVERY }} << 'EOF'
-            cd ~/DEAS-LA
-            git fetch && git reset --hard origin/main
-            docker compose up -d --build delivery
+            set -e
+            docker compose -f ~/docker-compose.yml pull delivery
+            docker compose -f ~/docker-compose.yml up -d delivery
           EOF
 
+      # -------- LOGGER --------
       - name: Deploy logger
         run: |
+          scp -o StrictHostKeyChecking=no docker-compose.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_LOGGER }}:~/docker-compose.yml
+
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_LOGGER }} << 'EOF'
-            cd ~/DEAS-LA
-            git fetch && git reset --hard origin/main
-            docker compose up -d --build logger
+            set -e
+            docker compose -f ~/docker-compose.yml pull logger
+            docker compose -f ~/docker-compose.yml up -d logger
           EOF
 
+      # -------- AUTH --------
       - name: Deploy auth
         run: |
+          scp -o StrictHostKeyChecking=no docker-compose.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_AUTH }}:~/docker-compose.yml
+
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_AUTH }} << 'EOF'
-            cd ~/DEAS-LA
-            git fetch && git reset --hard origin/main
-            docker compose up -d --build auth
+            set -e
+            docker compose -f ~/docker-compose.yml pull auth
+            docker compose -f ~/docker-compose.yml up -d auth
           EOF
