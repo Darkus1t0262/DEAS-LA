@@ -22,26 +22,27 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}   # darkjus
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build & Push Services
         run: |
-            declare -A services=(
-              [alert-generator-service]="Alert Management/alert-generator-service"
-              [alert-router-service]="Alert Management/alert-router-service"
-              [delivery-service]="Delivery-Logging/delivery-service"
-              [logger-service]="Delivery-Logging/logger-service"
-              [auth-service]="Delivery-Logging/auth-service"
-            )
-  
-            for svc in "${!services[@]}"; do
-              ctx="${services[$svc]}"
-              img="docker.io/${{ env.NAMESPACE }}/${{ env.PROJECT }}-${svc}:latest"
-              echo "Building $svc from $ctx → $img"
-              docker build -t "$img" "$ctx"
-              docker push "$img"
-            done
+          declare -A services=(
+            [alert-generator-service]="Alert Management/alert-generator-service"
+            [alert-router-service]="Alert Management/alert-router-service"
+            [delivery-service]="Delivery-Logging/delivery-service"
+            [logger-service]="Delivery-Logging/logger-service"
+            [auth-service]="Delivery-Logging/auth-service"
+          )
+
+          for svc in "${!services[@]}"; do
+            ctx="${services[$svc]}"
+            img="${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}-${svc}:latest"
+            echo "Building $svc from $ctx → $img"
+            docker build -t "$img" "$ctx"
+            docker push "$img"
+          done
+
   deploy:
     name: Deploy to EC2 Hosts
     needs: build_and_push
@@ -65,15 +66,12 @@ jobs:
 
           for host in "${HOSTS[@]}"; do
             echo "→ Deploying to $host"
-            # Copy compose file
-            scp -o StrictHostKeyChecking=no docker-compose.yml \
-                ${{ secrets.EC2_USER }}@$host:~/docker-compose.yml
 
-            # SSH & pull+start all containers without rebuilding
-            ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@$host << 'EOF'
-              set -e
-              cd ~
-              docker compose -f docker-compose.yml pull
-              docker compose -f docker-compose.yml up -d --no-build
-            EOF
+            # Copy the unified compose file
+            scp -o StrictHostKeyChecking=no docker-compose.yml \
+              ${{ secrets.EC2_USER }}@"$host":~/docker-compose.yml
+
+            # SSH in and pull + start without rebuilding
+            ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@"$host" \
+              "set -e; cd ~; docker compose -f docker-compose.yml pull; docker compose -f docker-compose.yml up -d --no-build"
           done
