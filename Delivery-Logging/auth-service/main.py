@@ -6,16 +6,16 @@ from datetime import datetime, timedelta
 
 app = FastAPI(title="Auth Service")
 
-# Configuración de JWT
-SECRET_KEY = "your-very-secret-key"    # Cámbialo por algo seguro
+# Config of JWT
+SECRET_KEY = "your-very-secret-key"    # Change for something safe
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# Seguridad
+# Security
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Usuario simulado
+# Simulaterd user 
 fake_user = {
     "username": "admin",
     # contraseña “secret” cifrada

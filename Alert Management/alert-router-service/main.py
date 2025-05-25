@@ -5,15 +5,15 @@ app = FastAPI(title="Alert Router Service")
 @app.get("/health")
 async def health_check():
     """
-    Health‐check endpoint: retorna status 'ok' y nombre del servicio.
+    Health‐check endpoint: return status 'ok' and service name.
     """
     return {"status": "ok", "service": "alert-router"}
 
 @app.post("/route")
 async def route_alert(payload: dict):
     """
-    Ruta principal: decide el canal de entrega y reenvía la alerta.
-    Por ahora devolvemos el payload para probar el endpoint.
+    Principal root: Chose channel for recibe and alert resend.
+    For now return the payload to test endpoint.
     """
-    # TODO: lógica para decidir canal (SMS, email, push) o encolar en Kafka
+    # ALL: Logic to choose channel (SMS, email, push) or on Kafka
     return {"routed": payload}
