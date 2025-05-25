@@ -1,0 +1,57 @@
+name: Deploy to Multiple EC2 Hosts
+
+on:
+  push:
+    branches: [ test ]
+
+jobs:
+  deploy-all:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy alert-generator
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_GENERATOR }} << 'EOF'
+            cd ~/DEAS-LA
+            git fetch && git reset --hard origin/main
+            docker compose up -d --build alert-generator
+          EOF
+
+      - name: Deploy alert-router
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_ALERT_ROUTER }} << 'EOF'
+            cd ~/DEAS-LA
+            git fetch && git reset --hard origin/main
+            docker compose up -d --build alert-router
+          EOF
+
+      - name: Deploy delivery
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DELIVERY }} << 'EOF'
+            cd ~/DEAS-LA
+            git fetch && git reset --hard origin/main
+            docker compose up -d --build delivery
+          EOF
+
+      - name: Deploy logger
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_LOGGER }} << 'EOF'
+            cd ~/DEAS-LA
+            git fetch && git reset --hard origin/main
+            docker compose up -d --build logger
+          EOF
+
+      - name: Deploy auth
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_AUTH }} << 'EOF'
+            cd ~/DEAS-LA
+            git fetch && git reset --hard origin/main
+            docker compose up -d --build auth
+          EOF
