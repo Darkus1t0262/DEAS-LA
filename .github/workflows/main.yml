@@ -27,22 +27,21 @@ jobs:
 
       - name: Build & Push Services
         run: |
-          declare -A services=(
-            ["alert-generator-service"]="Alert Management/alert-generator-service"
-            ["alert-router-service" ]="Alert Management/alert-router-service"
-            ["delivery-service"     ]="Delivery-Logging/delivery-service"
-            ["logger-service"       ]="Delivery-Logging/logger-service"
-            ["auth-service"         ]="Delivery-Logging/auth-service"
-          )
-
-          for svc in "${!services[@]}"; do
-            ctx="${services[$svc]}"
-            img="${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}-${svc}:latest"
-            echo "Building $svc from $ctx → $img"
-            docker build -t "$img" "$ctx"
-            docker push "$img"
-          done
-
+            declare -A services=(
+              [alert-generator-service]="Alert Management/alert-generator-service"
+              [alert-router-service]="Alert Management/alert-router-service"
+              [delivery-service]="Delivery-Logging/delivery-service"
+              [logger-service]="Delivery-Logging/logger-service"
+              [auth-service]="Delivery-Logging/auth-service"
+            )
+  
+            for svc in "${!services[@]}"; do
+              ctx="${services[$svc]}"
+              img="docker.io/${{ env.NAMESPACE }}/${{ env.PROJECT }}-${svc}:latest"
+              echo "Building $svc from $ctx → $img"
+              docker build -t "$img" "$ctx"
+              docker push "$img"
+            done
   deploy:
     name: Deploy to EC2 Hosts
     needs: build_and_push
