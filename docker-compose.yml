@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  # Infra (optional in prod, you can omit if running infra elsewhere)
+  # Infra (optional in prod)
   zookeeper:
     image: bitnami/zookeeper:latest
     environment:
@@ -24,33 +24,33 @@ services:
   alert-generator:
     build:
       context: "./Alert Management/alert-generator-service"
-    image: myregistry.com/deas-la/alert-generator-service:latest
+    image: darkjus/deas-la-alert-generator-service:latest
     ports: ["8000:8000"]
     depends_on: [kafka]
 
   alert-router:
     build:
       context: "./Alert Management/alert-router-service"
-    image: myregistry.com/deas-la/alert-router-service:latest
+    image: darkjus/deas-la-alert-router-service:latest
     ports: ["8001:8001"]
     depends_on: [kafka]
 
   delivery:
     build:
       context: "./Delivery-Logging/delivery-service"
-    image: myregistry.com/deas-la/delivery-service:latest
+    image: darkjus/deas-la-delivery-service:latest
     ports: ["8002:8002"]
     depends_on: [kafka]
 
   logger:
     build:
       context: "./Delivery-Logging/logger-service"
-    image: myregistry.com/deas-la/logger-service:latest
+    image: darkjus/deas-la-logger-service:latest
     ports: ["8003:8003"]
     depends_on: [mongodb]
 
   auth:
     build:
       context: "./Delivery-Logging/auth-service"
-    image: myregistry.com/deas-la/auth-service:latest
+    image: darkjus/deas-la-auth-service:latest
     ports: ["8004:8004"]

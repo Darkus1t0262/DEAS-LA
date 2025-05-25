@@ -2,29 +2,30 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ test ]      # or main, as you prefer
+    branches: [ test ]   # or 'main'
 
 env:
-  REGISTRY: myregistry.com
-  REPO_PREFIX: deas-la
+  REGISTRY: docker.io
+  NAMESPACE: darkjus
+  PROJECT: deas-la
 
 jobs:
   build_and_push:
-    name: Build & Push Docker Images
+    name: Build & Push to Docker Hub
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          registry: docker.io
-          username: ${{ secrets.DOCKER_USERNAME }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}   # darkjus
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & push each service
+      - name: Build & Push Services
         run: |
           declare -A services=(
             ["alert-generator-service"]="Alert Management/alert-generator-service"
@@ -33,12 +34,13 @@ jobs:
             ["logger-service"       ]="Delivery-Logging/logger-service"
             ["auth-service"         ]="Delivery-Logging/auth-service"
           )
-          for name in "${!services[@]}"; do
-            context="${services[$name]}"
-            image="${{ env.REGISTRY }}/${{ env.REPO_PREFIX }}/$name:latest"
-            echo "Building $name from $context → $image"
-            docker build -t "$image" "$context"
-            docker push "$image"
+
+          for svc in "${!services[@]}"; do
+            ctx="${services[$svc]}"
+            img="${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}-${svc}:latest"
+            echo "Building $svc from $ctx → $img"
+            docker build -t "$img" "$ctx"
+            docker push "$img"
           done
 
   deploy:
@@ -52,7 +54,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to all EC2 hosts
+      - name: Deploy via Docker Compose on each EC2
         run: |
           HOSTS=(
             "${{ secrets.EC2_HOST_ALERT_GENERATOR }}"
@@ -64,14 +66,15 @@ jobs:
 
           for host in "${HOSTS[@]}"; do
             echo "→ Deploying to $host"
+            # Copy compose file
             scp -o StrictHostKeyChecking=no docker-compose.yml \
-               ${{ secrets.EC2_USER }}@$host:~/docker-compose.yml
+                ${{ secrets.EC2_USER }}@$host:~/docker-compose.yml
 
+            # SSH & pull+start all containers without rebuilding
             ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@$host << 'EOF'
               set -e
-              # Pull the latest images (no local build)
-              docker compose -f ~/docker-compose.yml pull
-              # (Re)create all services in detached mode
-              docker compose -f ~/docker-compose.yml up -d --no-build
+              cd ~
+              docker compose -f docker-compose.yml pull
+              docker compose -f docker-compose.yml up -d --no-build
             EOF
           done
