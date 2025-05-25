@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\josue\Documents\GitHub\DEAS-LA\alert-generator\venv"
+VIRTUAL_ENV="C:\Users\JOSHUA\Documents\GitHub\DEAS-LA\Alert Management\alert-generator-service\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
